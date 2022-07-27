@@ -30,16 +30,23 @@ app.use(
     })
   );
 
-app.listen(3000);
-app.use(bp.urlencoded({extends:true}));
-
-app.get('/',function(req,res){
-    var con=mysql.createConnection({
+function connection(){
+    return mysql.createConnection({
         host:'localhost',
         user:'root',
         password:'',
         database:'boutique'
     });
+}
+
+app.listen(3000);
+app.use(bp.urlencoded({extends:true}));
+
+
+//routes
+
+app.get('/',function(req,res){
+    var con=connection();
     
     
     con.query("SELECT * FROM products",(e,result)=>{
@@ -68,7 +75,36 @@ app.get('/checkout',function(req,res){
     return res.render('pages/checkout');
 });
 app.get('/cart',function(req,res){
-    return res.render('pages/cart');
+    var con=connection();
+    con.query("SELECT * FROM cart INNER JOIN products ON cart.product_id=products.id WHERE cart.user_id='marufsiddique00@gmail.com'",(e,result)=>{
+        return res.render('pages/cart',{
+                cart:result
+            });
+    });
+    
+});
+app.post('/cart-detele',function(req,res){
+    var id=req.body.id;
+    var con=connection();
+    con.query("DELETE FROM cart WHERE product_id="+id,(e,result)=>{
+        con.query("SELECT * FROM cart INNER JOIN products ON cart.product_id=products.id WHERE cart.user_id='marufsiddique00@gmail.com';",(e,result)=>{
+            res.redirect('back');
+        });
+    });
+    
+});
+app.get('/product/:id',function(req,res){
+    var id=req.params.id;
+    var sql="SELECT * FROM products WHERE id=";
+    sql=sql.concat(id);
+    sql=sql.concat(" LIMIT 1");
+    var con=connection();
+    con.query(sql,(e,result)=>{
+        return res.render('pages/product-details',{
+            product:result
+        });
+    });
+    
 });
 
 app.get('/shop',function(req,res){
@@ -84,9 +120,7 @@ app.get('/shop',function(req,res){
         var products=result;
         con.query("SELECT * FROM category",(e,result)=>{
             var category=result;
-            
-            //return res.send(products);
-            return res.render('pages/index',{
+            return res.render('pages/shop',{
                 products:products,
                 category:category,
             });
@@ -95,18 +129,15 @@ app.get('/shop',function(req,res){
     
 });
 app.post('/add-to-cart',function(req,res){
+    var con=connection();
     var id=req.body.id;
-    var name=req.body.name;
-    var price=req.body.price;
-    var sell=req.body.sell;
-    var img=req.body.img;
-    var quantity=req.body.quantity;
-    var product={
-        id:id,
-        name:name,
-        price:price,
-        sell:sell,
-        img:img,
-        quantity:quantity,
-    }; 
+    var email=req.oidc.user.email;
+    var sql="INSERT INTO cart(user_id,product_id,quantity) VALUES ('";
+    sql=sql.concat(email);
+    sql=sql.concat("',");
+    sql=sql.concat(id);
+    sql=sql.concat(",1)");
+    con.query(sql,(e,result)=>{
+        res.redirect('back');
+    });
 });
