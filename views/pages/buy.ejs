@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="">
     <meta name="author" content="">
-    <title><%-product.name%></title>
+    <title>Buy Product</title>
     <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link href="/css/font-awesome.min.css" rel="stylesheet">
     <link href="/css/prettyPhoto.css" rel="stylesheet">
@@ -110,126 +110,39 @@
 			</div>
 		</div><!--/header-bottom-->
 	</header><!--/header-->
-	
-	<section>
-		<div class="container">
-			<div class="row">
-				<div class="col-sm-3">
-					<div class="left-sidebar">
-						<h2>Category</h2>
-						<div class="panel-group category-products" id="accordian"><!--category-productsr-->
-							<div class="panel panel-default">
-								<div class="panel-heading">
-									<h4 class="panel-title">
-										<a data-toggle="collapse" data-parent="#accordian" href="#sportswear">
-											<span class="badge pull-right"><i class="fa fa-plus"></i></span>
-											Sportswear
-										</a>
-									</h4>
-								</div>
-								<div id="sportswear" class="panel-collapse collapse">
-									<div class="panel-body">
-										<ul>
-											<li><a href="">Nike </a></li>
-											<li><a href="">Under Armour </a></li>
-											<li><a href="">Adidas </a></li>
-											<li><a href="">Puma</a></li>
-											<li><a href="">ASICS </a></li>
-										</ul>
-									</div>
-								</div>
-							</div>
-							
-							<div class="panel panel-default">
-								<div class="panel-heading">
-									<h4 class="panel-title"><a href="#">Kids</a></h4>
-								</div>
-							</div>
-						</div><!--/category-products-->
-						
-						<div class="shipping text-center"><!--shipping-->
-							<img src="/images/home/shipping.jpg" alt="" />
-						</div><!--/shipping-->
-						
-					</div>
-				</div>
-				
-				<div class="col-sm-9 padding-right">
-					<div class="product-details"><!--product-details-->
-						<div class="col-sm-5">
-							<div class="view-product">
-								<img src='<%=product.img%>' alt="" />
-							</div>
 
-						</div>
-						<div class="col-sm-7">
-							<div class="product-information"><!--/product-information-->
-								<img src="images/product-details/new.jpg" class="newarrival" alt="" />
-								<h2><%-product.name%></h2>
-								<span>
-									<% if(product.sell){ %>
-										<span>BDT <%-product.sell%></span> <br>
-										<span style="text-decoration: line-through;">BDT <%-product.price%></span> <br>
-										<% } else { %>
-										<span>BDT <%-product.price%></span> <br>
-										<% } %>
-									<br>
-									<label>Quantity:</label>
-									<form action="/add-to-cart" method="post">
-										<input type="hidden" value='<%-product.id%>'>
-										<button type="button" class="btn btn-fefault cart">
-										<i class="fa fa-shopping-cart"></i>
-										Add to cart
-									</button></a>
-									</form>
-									
-								</span>
-								<p><b>Availability:</b> In Stock</p>
-								<p><b>Condition:</b> New</p>
-							</div><!--/product-information-->
-						</div>
-					</div><!--/product-details-->
-					
-					<div class="category-tab shop-details-tab"><!--category-tab-->
-						<div class="col-sm-12">
-							<ul class="nav nav-tabs">
-								<li><a href="#details" data-toggle="tab">Details</a></li>
-								<li class="active"><a href="#reviews" data-toggle="tab">Reviews (5)</a></li>
-							</ul>
-						</div>
-						<div class="tab-content">
-							<div class="tab-pane fade" id="details" >
-								<p><%-product.description%></p>
-							</div>
-														
-							<div class="tab-pane fade active in" id="reviews" >
-								<div class="col-sm-12">
-									<p><b>Write Your Review</b></p>
-									
-									<form action="/review" method="post">
-										<input type="hidden" name="id" value='<%-product.id%>'>
-										<span>
-											<input type="text" name="name" placeholder="Your Name"/>
-											<input type="email" name="email" placeholder="Email Address"/>
-										</span>
-										<textarea name="txt" ></textarea>
-										<b>Rating: </b> <img src="/images/product-details/rating.png" alt="" />
-										<button type="submit" class="btn btn-default pull-right">
-											Submit
-										</button>
-									</form>
-								</div>
-							</div>
-							
-						</div>
-					</div><!--/category-tab-->
-					
-					
-				</div>
+	<section id="cart_items">
+		<div class="container">
+			
+			<div class="container">
+                <h4>Follow the steps below to complete the payment procedure!</h4>
+                <ul>
+                    <li>Dial *247#</li>
+                    <li>Press 1 and send</li>
+                    <li>Enter Number 01303391621 and send</li>
+                    
+                    <% if(product.sell){ %>
+                        <li>Enter <%-product.sell%> and send</li>
+                        <% } else { %>
+                        <li>Enter <%-product.price%> and send</li>
+                        <% } %>
+                    <li>Enter <%-user_id%> and send</li>
+                    <li>Enter your bkash pin and send</li>
+                    <li>Fill up the form below to confirm your payment</li>
+                    <li>Thank you!!!</li>
+                </ul>
 			</div>
+            <form action="/buy-confirm" method="post">
+                <input type="hidden" name="id" value='<%-product.id%>'>
+                <input type="tel" name="acc" placeholder="Bkash Account Number">
+                <input type="text" name="trans" placeholder="Transaction ID">
+                <input type="submit" value="Confirm">
+            </form>
 		</div>
-	</section>
+	</section> <!--/#cart_items-->
+
 	
+
 	<footer id="footer" style="margin-top: 50px;"><!--Footer-->		
 		<div class="footer-bottom">
 			<div class="container">
@@ -242,11 +155,10 @@
 	</footer><!--/Footer-->
 	
 
-  
+
     <script src="/js/jquery.js"></script>
-	<script src="/js/price-range.js"></script>
-    <script src="/js/jquery.scrollUp.min.js"></script>
 	<script src="/js/bootstrap.min.js"></script>
+	<script src="/js/jquery.scrollUp.min.js"></script>
     <script src="/js/jquery.prettyPhoto.js"></script>
     <script src="/js/main.js"></script>
 </body>

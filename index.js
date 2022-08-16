@@ -2,8 +2,8 @@ var express = require('express');
 var ejs = require('ejs');
 var mysql = require('mysql');
 var bp = require('body-parser');
-//var session = require('express-session');
-var { auth,requiresAuth } = require('express-openid-connect');
+var sessions = require('express-session');
+var cookieParser = require('cookie-parser');
 
 mysql.createConnection({
     host:'localhost',
@@ -14,110 +14,116 @@ mysql.createConnection({
 
 var app=express();
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
 app.use(express.static('public'));
 app.set('view engine','ejs');
 // app.use(session,{secret:"secret"});
-app.use(
-    auth({
-        authRequired: false,
-        auth0Logout: true,
-        issuerBaseURL: 'https://dev-ow0u0hqx.us.auth0.com',
-        baseURL: 'http://localhost:3000',
-        clientID: 'HtD26hdw8HvSEfzxHyFfVuN5cWAYO6oY',
-        secret: 'h7z3OCYsaOxbTbuAHZ4zzxojYPs9qlJ7hdTJ3sdgLDvpG9nb6lzCgoikQePWVQPG',
-        clientSecret:'h7z3OCYsaOxbTbuAHZ4zzxojYPs9qlJ7hdTJ3sdgLDvpG9nb6lzCgoikQePWVQPG',
-        idpLogout: true,
-    })
-  );
 
-function connection(){
-    return mysql.createConnection({
+const oneDay = 1000 * 60 * 60 * 24;
+app.use(sessions({
+    secret: "thisismysecrctekeyfhrgfgrfrty84fwir767",
+    saveUninitialized:true,
+    cookie: { maxAge: oneDay },
+    resave: false 
+}));
+
+var auth=(req,res,next)=>{
+    if(req.session.logged){
+        next()
+    }
+    else{
+        res.redirect('/login')
+    }
+}
+
+var con=  mysql.createConnection({
         host:'localhost',
         user:'root',
         password:'',
         database:'boutique'
     });
-}
 
 app.listen(3000);
 app.use(bp.urlencoded({extends:true}));
+app.use(express.static(__dirname + "/public"));
+app.use(express.static("."));
 
 
 //routes
 
-app.get('/',function(req,res){
-    var con=connection();
-    
-    
+app.get('/',function(req,res){    
+    var products;
     con.query("SELECT * FROM products",(e,result)=>{
-        var products=result;
-        con.query("SELECT * FROM category",(e,result)=>{
-            var category=result;
-            
-            //return res.send(products);
-            return res.render('pages/index',{
-                products:products,
-                category:category,
-            });
+        products=result;
+    });
+    con.query("SELECT * FROM category WHERE parent=0",(e,result)=>{
+        var category=result;
+        return res.render('pages/index',{
+            products:products,
+            category:category,
         });
     });
     
     
     
 });
-app.get('/profile',function(req,res){
-    return res.send(req.oidc.user.email);
+app.get('/profile',auth,function(req,res){
+    
 });
 app.get('/contact-us',function(req,res){
     return res.render('pages/contact-us');
 });
-app.get('/checkout',function(req,res){
+app.get('/checkout',auth,function(req,res){
     return res.render('pages/checkout');
 });
-app.get('/cart',function(req,res){
-    var con=connection();
-    con.query("SELECT * FROM cart INNER JOIN products ON cart.product_id=products.id WHERE cart.user_id='marufsiddique00@gmail.com'",(e,result)=>{
+app.get('/cart',auth,function(req,res){
+    con.query(`SELECT * FROM cart INNER JOIN products ON cart.product_id=products.id WHERE cart.user_id=${req.session.userid}`,(e,result)=>{
         return res.render('pages/cart',{
                 cart:result
             });
     });
     
 });
-app.post('/cart-detele',function(req,res){
+app.post('/cart-detele',auth,function(req,res){
     var id=req.body.id;
-    var con=connection();
     con.query("DELETE FROM cart WHERE product_id="+id,(e,result)=>{
-        con.query("SELECT * FROM cart INNER JOIN products ON cart.product_id=products.id WHERE cart.user_id='marufsiddique00@gmail.com';",(e,result)=>{
-            res.redirect('back');
-        });
+        if(e){
+            res.send(r)
+            return
+        }
+        res.redirect('back');
     });
     
 });
 app.get('/product/:id',function(req,res){
     var id=req.params.id;
-    var sql="SELECT * FROM products WHERE id=";
-    sql=sql.concat(id);
-    sql=sql.concat(" LIMIT 1");
-    var con=connection();
-    con.query(sql,(e,result)=>{
+    
+    con.query(`SELECT * FROM products WHERE id=${id} LIMIT 1`,(e,result)=>{
         return res.render('pages/product-details',{
-            product:result
+            product:result[0]
         });
     });
     
 });
 
-app.get('/shop',function(req,res){
-    var con=mysql.createConnection({
-        host:'localhost',
-        user:'root',
-        password:'',
-        database:'boutique'
+app.post('/review',auth,(req,res)=>{
+    var id=req.body.id;
+    var name=req.body.name;
+    var email=req.body.email;
+    var txt=req.body.txt;
+    con.query(`INSERT INTO review(name,email,txt,product_id) VALUES('${name}','${email}','${txt}',${id})`,(e,result)=>{
+        res.redirect('back');
     });
-    
-    
+})
+
+app.get('/shop',function(req,res){
+    var products;
     con.query("SELECT * FROM products",(e,result)=>{
-        var products=result;
+        products=result;
+    });
         con.query("SELECT * FROM category",(e,result)=>{
             var category=result;
             return res.render('pages/shop',{
@@ -125,19 +131,98 @@ app.get('/shop',function(req,res){
                 category:category,
             });
         });
-    });
     
 });
-app.post('/add-to-cart',function(req,res){
-    var con=connection();
+app.post('/add-to-cart',auth,function(req,res){
     var id=req.body.id;
-    var email=req.oidc.user.email;
-    var sql="INSERT INTO cart(user_id,product_id,quantity) VALUES ('";
-    sql=sql.concat(email);
-    sql=sql.concat("',");
-    sql=sql.concat(id);
-    sql=sql.concat(",1)");
-    con.query(sql,(e,result)=>{
-        res.redirect('back');
+    
+    con.query(`INSERT INTO cart(user_id,product_id) VALUES(${req.session.userid},${id})`,(e,result)=>{
+        if(e){
+            res.send(e) 
+            return
+        }
+        res.redirect('/cart');
     });
 });
+app.post('/buy-now',auth,function(req,res){
+    var id=req.body.id;
+    res.redirect(`/buy/${id}`);
+    
+   
+});
+app.get('/buy/:id',auth,(req,res)=>{
+    var id=req.params.id;
+    con.query(`SELECT * FROM products WHERE id=${id}`,(e,result)=>{
+        if(e){
+            res.send(e) 
+            return
+        }
+        res.render('pages/buy',{
+            product:result[0],
+            user_id:req.session.userid
+        });
+    });
+})
+app.get('/register',(req,res)=>{
+    if(req.session.logged){
+        res.redirect('/logout');
+        return
+    }
+    res.render('pages/register')
+})
+app.get('/login',(req,res)=>{
+    if(req.session.logged){
+        res.redirect('/');
+        return
+    }
+    res.render('pages/login')
+})
+app.get('/logout',auth,(req,res)=>{
+    if(req.session.logged){
+        req.session.logged=false
+        req.session.id=null
+        res.redirect('/');
+        return
+    }
+})
+app.post('/log-in',(req,res)=>{
+    var email=req.body.email;
+    var password=req.body.password;
+    con.query(`SELECT id FROM users WHERE email='${email}' AND password='${password}'`,(e,r)=>{
+        if(r){
+            req.session.userid=r[0].id
+            req.session.logged=true
+            res.redirect('/');
+        }
+        else{
+            res.render('pages/login')
+        }
+    })
+    
+})
+
+app.post('/registration',(req,res)=>{
+    var name=req.body.name;
+    var email=req.body.email;
+    var phone=req.body.phone;
+    var address=req.body.address;
+    var password=req.body.password;
+    con.query(`INSERT INTO users(name,email,phone,address,password) VALUES('${name}','${email}','${phone}','${address}','${password}')`,(e,r)=>{
+        req.session.id=r[0].id
+        req.session.logged=true
+        res.redirect('/');
+    })
+})
+
+app.post('/buy-confirm',auth,(req,res)=>{
+    var id=req.body.id;
+    var acc=req.body.acc;
+    var trans=req.body.trans;
+    con.query(`INSERT INTO buy(user_id,trans,account,product_id) VALUES('${req.session.userid}','${trans}','${acc}','${id}')`,(e,r)=>{
+        if(e){
+            res.send(e)
+            return
+        }
+        res.render('pages/buy-confirm');
+    })
+})
